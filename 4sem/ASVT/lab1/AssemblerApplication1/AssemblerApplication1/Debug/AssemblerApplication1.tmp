@@ -1,0 +1,30 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.2.7</VERSION>
+ <DEVICE>"ATmega32"</DEVICE>
+ <WORKING_DIR>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\Debug</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>E:/Utilits\AtmelStudio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc</DIR>
+  <DIR>E:\Utilits\AtmelStudio\7.0\toolchain\avr8\avrassembler\Include</DIR>
+  <DIR></DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\main.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>E:/Utilits\AtmelStudio\7.0\Packs\atmel\ATmega_DFP\1.3.300\avrasm\inc\m32def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\Debug\AssemblerApplication1.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>AssemblerApplication1.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>AssemblerApplication1.map</FILE>
+  <FILE>AssemblerApplication1.lss</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <reset><FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\main.asm</FILE><LINE>23</LINE></reset>
+  <delay><FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\main.asm</FILE><LINE>7</LINE></delay>
+  <delay_sub><FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\main.asm</FILE><LINE>11</LINE></delay_sub>
+  <loop><FILE>E:\Politech\4сем\АСВТ\лаб1\AssemblerApplication1\AssemblerApplication1\main.asm</FILE><LINE>44</LINE></loop>
+ </LABELS>
+</ASSEMBLER_INFO>
