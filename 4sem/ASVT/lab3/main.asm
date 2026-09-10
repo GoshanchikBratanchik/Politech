@@ -1,952 +1,188 @@
-; À‡·Ó‡ÚÓÌ‡ˇ ‡·ÓÚ‡ 3, ¬‡Ë‡ÌÚ 3 ó ÃÓ‰ÛÎ¸ ˜‡ÒÓ‚
-; ¿ÌÚÓÌÓ‚ √.≈.
-;
-; ŒÚÓ·‡ÊÂÌËÂ: PORTC ó ÒÂ„ÏÂÌÚ˚, PA0-PA3 ó ‚˚·Ó ‡Áˇ‰‡
-;  ÌÓÔÍË: PD0 (+), PD1 (-), PD2 (INT0), PD3 (INT1)
-;
-; –ÂÊËÏ˚:
-;   mode=0: ÓÚÓ·‡ÊÂÌËÂ (˜‡Ò˚ Ë‰ÛÚ)
-;   mode=1: Ì‡ÒÚÓÈÍ‡ (˜‡Ò˚ ÒÚÓˇÚ, Ì‡ÒÚ‡Ë‚‡ÂÏ˚È ˝ÎÂÏÂÌÚ ÏË„‡ÂÚ 2 √ˆ)
-;
-; ‘ÓÏ‡Ú˚ ÓÚÓ·‡ÊÂÌËˇ (disp_fmt):
-;   0 = ◊◊.ÃÃ
-;   1 = ÃÃ.——
-;
-; Õ‡ÒÚ‡Ë‚‡ÂÏ˚È ˝ÎÂÏÂÌÚ (edit_sel):
-;   0 = ◊◊, 1 = ÃÃ, 2 = ——
-;
-; “‡ÈÏÂ T0: ‰ÂÎËÚÂÎ¸ /64, preload=131 ? ~1 ÏÒ Ì‡ ÚËÍ ÔË 8 Ã√ˆ
-; 255 ÚËÍÓ‚ ? 1 ÒÂÍÛÌ‰‡ (255 * 1/977 √ˆ ? 0.996 Ò ? ‰ÓÒÚ‡ÚÓ˜ÌÓ ÚÓ˜ÌÓ)
-; “Ó˜ÌÂÂ: 8000000/64 = 125000 √ˆ, (256-131)=125 ? 125000/125 = 1000 √ˆ (1 ÏÒ/ÚËÍ)
-; 1000 ÚËÍÓ‚ = 1 ÒÂÍÛÌ‰‡
-; 500 ÚËÍÓ‚  = 0.5 Ò (ÏË„‡ÌËÂ 2 √ˆ)
-; 200 ÚËÍÓ‚  = 0.2 Ò (·˚ÒÚÓÂ ËÁÏÂÌÂÌËÂ ÔÓÒÎÂ 2Ò)
-; 100 ÚËÍÓ‚  = 0.1 Ò (Ó˜ÂÌ¸ ·˚ÒÚÓÂ ÔÓÒÎÂ 4Ò)
-; 2000 ÚËÍÓ‚ = 2 Ò (ÔÓÓ„ ÛÒÍÓÂÌËˇ 1)
-; 4000 ÚËÍÓ‚ = 4 Ò (ÔÓÓ„ ÛÒÍÓÂÌËˇ 2)
-;
-; “ËÍË ı‡ÌˇÚÒˇ Í‡Í 16-·ËÚ ‚ ‰‚Ûı ·‡ÈÚ‡ı (H:L)
+; ============================================================
+; –¢–µ—Å—Ç: –∫–Ω–æ–ø–∫–∞ PD2 (INT0) –ø–µ—Ä–µ–∫–ª—é—á–∞–µ—Ç —Ä–µ–∂–∏–º
+;   0 = –æ—Ç–æ–±—Ä–∞–∂–µ–Ω–∏–µ (—Å–µ–∫—É–Ω–¥—ã –∏–¥—É—Ç)
+;   1 = –Ω–∞—Å—Ç—Ä–æ–π–∫–∞   (—Å–µ–∫—É–Ω–¥—ã –æ—Å—Ç–∞–Ω–æ–≤–ª–µ–Ω—ã)
+; –ú–ª–∞–¥—à–∏–π —Ä–∞–∑—Ä—è–¥ (DIS0) –ø–æ–∫–∞–∑—ã–≤–∞–µ—Ç —Å–µ–∫—É–Ω–¥—ã 0-9 –ø–æ –∫—Ä—É–≥—É,
+; –æ—Å—Ç–∞–ª—å–Ω—ã–µ 3 —Ä–∞–∑—Ä—è–¥–∞ –¥–µ—Ä–∂–∞—Ç "0".
+; ============================================================
+; –í–ê–ñ–ù–û (–∞–ø–ø–∞—Ä–∞—Ç–Ω–æ, –Ω–∞ –ø–ª–∞—Ç–µ):
+;   - –≤–∫–ª—é—á–∏—Ç–µ SW8.1-SW8.4 (PA0-PA3 -> –≤—ã–±–æ—Ä —Ä–∞–∑—Ä—è–¥–∞)
+;   - —É–±–µ–¥–∏—Ç–µ—Å—å, —á—Ç–æ –∫–Ω–æ–ø–∫–∞ PD2 –ø–æ–¥–∫–ª—é—á–µ–Ω–∞ –∫ –ª–∏–Ω–∏–∏ INT0
+; ============================================================
 
 .include "m32def.inc"
 
-.def temp    = r16
-.def temp1   = r17
-.def temp2   = r18
-.def temp3   = r19
-
-.equ T0_PRELOAD = 131       ; (256-131)*64/8000000 = 0.001 Ò = 1 ÏÒ
-
-; œÓÓ„Ë ‚ ÚËÍ‡ı (16-·ËÚ, ı‡ÌˇÚÒˇ Í‡Í ÒÚ‡¯ËÈ:ÏÎ‡‰¯ËÈ)
-.equ TICKS_1SEC_H   = high(1000)
-.equ TICKS_1SEC_L   = low(1000)
-.equ TICKS_BLINK_H  = high(500)
-.equ TICKS_BLINK_L  = low(500)
-.equ TICKS_HOLD2_H  = high(2000)   ; 2 ÒÂÍÛÌ‰˚ Û‰ÂÊ‡ÌËˇ
-.equ TICKS_HOLD2_L  = low(2000)
-.equ TICKS_HOLD4_H  = high(4000)   ; 4 ÒÂÍÛÌ‰˚ Û‰ÂÊ‡ÌËˇ
-.equ TICKS_HOLD4_L  = low(4000)
-.equ TICKS_FAST_H   = high(200)    ; Í‡Ê‰˚Â 0.2 Ò
-.equ TICKS_FAST_L   = low(200)
-.equ TICKS_VFAST_H  = high(100)    ; Í‡Ê‰˚Â 0.1 Ò
-.equ TICKS_VFAST_L  = low(100)
-
-; ========= œ≈–≈Ã≈ÕÕ€≈ ¬ SRAM =========
 .dseg
-tick_cnt_l:  .byte 1    ; Ò˜∏Ú˜ËÍ ÚËÍÓ‚ Ú‡ÈÏÂ‡ (ÏÎ. ·‡ÈÚ)
-tick_cnt_h:  .byte 1    ; Ò˜∏Ú˜ËÍ ÚËÍÓ‚ Ú‡ÈÏÂ‡ (ÒÚ. ·‡ÈÚ)
+digit_buffer: .byte 4      ; —Å–µ–≥–º–µ–Ω—Ç–Ω—ã–µ –∫–æ–¥—ã –¥–ª—è —Ä–∞–∑—Ä—è–¥–æ–≤ 0..3
 
-sec_tick_l:  .byte 1    ; Ò˜∏Ú˜ËÍ ÚËÍÓ‚ ‰Îˇ ÒÂÍÛÌ‰˚
-sec_tick_h:  .byte 1
-
-blink_tick_l: .byte 1   ; Ò˜∏Ú˜ËÍ ÚËÍÓ‚ ‰Îˇ ÏË„‡ÌËˇ
-blink_tick_h: .byte 1
-
-hold_tick_l: .byte 1    ; ÒÍÓÎ¸ÍÓ ÚËÍÓ‚ Á‡Ê‡Ú‡ ÍÌÓÔÍ‡ PD0/PD1
-hold_tick_h: .byte 1
-
-rep_tick_l:  .byte 1    ; Ò˜∏Ú˜ËÍ ÚËÍÓ‚ ‰Îˇ ÔÓ‚ÚÓÌÓ„Ó Ò‡·‡Ú˚‚‡ÌËˇ
-rep_tick_h:  .byte 1
-
-mode:        .byte 1    ; 0=ÓÚÓ·‡ÊÂÌËÂ, 1=Ì‡ÒÚÓÈÍ‡
-disp_fmt:    .byte 1    ; 0=◊◊.ÃÃ, 1=ÃÃ.——
-edit_sel:    .byte 1    ; 0=◊◊, 1=ÃÃ, 2=——
-blink_state: .byte 1    ; 0=˝ÎÂÏÂÌÚ ‚Ë‰ÂÌ, 1=˝ÎÂÏÂÌÚ ÒÍ˚Ú
-
-hh:          .byte 1    ; ˜‡Ò˚   (0-23)
-mm:          .byte 1    ; ÏËÌÛÚ˚ (0-59)
-ss:          .byte 1    ; ÒÂÍÛÌ‰˚ (0-59)
-
-btn0_prev:   .byte 1    ; ÔÂ‰˚‰Û˘ÂÂ ÒÓÒÚÓˇÌËÂ PD0
-btn1_prev:   .byte 1    ; ÔÂ‰˚‰Û˘ÂÂ ÒÓÒÚÓˇÌËÂ PD1
-btn0_held:   .byte 1    ; 1 = ÍÌÓÔÍ‡ PD0 ÒÂÈ˜‡Ò Á‡Ê‡Ú‡
-btn1_held:   .byte 1    ; 1 = ÍÌÓÔÍ‡ PD1 ÒÂÈ˜‡Ò Á‡Ê‡Ú‡
-
-; =========  Œƒ =========
 .cseg
 .org 0x0000
     rjmp RESET
-
-.org INT0addr           ; 0x0002 ó ‚ÂÍÚÓ INT0
+.org 0x0002                 ; –≤–µ–∫—Ç–æ—Ä INT0
     rjmp INT0_ISR
+.org 0x0016                 ; –≤–µ–∫—Ç–æ—Ä Timer0 Overflow
+    rjmp TIMER0_OVF_ISR
 
-.org INT1addr           ; 0x0004 ó ‚ÂÍÚÓ INT1
-    rjmp INT1_ISR
+.org 0x0030
+SEG_TABLE:
+    .db 0x3F,0x06,0x5B,0x4F,0x66,0x6D,0x7D,0x07,0x7F,0x6F   ; –∫–æ–¥—ã —Ü–∏—Ñ—Ä 0-9
 
-.org 0x0016             ; ‚ÂÍÚÓ ÔÂÂÔÓÎÌÂÌËˇ Timer0
-    rjmp TIMER0_ISR
-
-.org 0x0020
-
-; ========= —¡–Œ— / »Õ»÷»¿À»«¿÷»ﬂ =========
 RESET:
-    ; ÒÚÂÍ
-    ldi temp, high(RAMEND)
-    out SPH, temp
-    ldi temp, low(RAMEND)
-    out SPL, temp
+    ldi  r16, LOW(RAMEND)
+    out  SPL, r16
+    ldi  r16, HIGH(RAMEND)
+    out  SPH, r16
 
-    ; PORTC ó ÒÂ„ÏÂÌÚ˚ (‚ÒÂ ‚˚ıÓ‰˚)
-    ldi temp, 0xFF
-    out DDRC, temp
+    ; PORTC - —Å–µ–≥–º–µ–Ω—Ç—ã –Ω–∞ –≤—ã—Ö–æ–¥
+    ldi  r16, 0xFF
+    out  DDRC, r16
+    ; PORTA –±–∏—Ç—ã 0-3 - –≤—ã–±–æ—Ä —Ä–∞–∑—Ä—è–¥–∞ –Ω–∞ –≤—ã—Ö–æ–¥
+    ldi  r16, 0x0F
+    out  DDRA, r16
 
-    ; PA0-PA3 ó ‚˚·Ó ‡Áˇ‰‡ (‚˚ıÓ‰˚), PA4-PA7 ó ‚ıÓ‰˚
-    in temp, DDRA
-    ori temp, 0x0F
-    out DDRA, temp
+    ; –∑–∞–ø–æ–ª–Ω—è–µ–º –±—É—Ñ–µ—Ä —Ä–∞–∑—Ä—è–¥–æ–≤ –∫–æ–¥–æ–º "0"
+    ldi  YL, LOW(digit_buffer)
+    ldi  YH, HIGH(digit_buffer)
+    ldi  r16, 0x3F
+    st   Y+, r16
+    st   Y+, r16
+    st   Y+, r16
+    st   Y,  r16
 
-    ; PORTD ó ‚ÒÂ ‚ıÓ‰˚ (ÍÌÓÔÍË)
-    clr temp
-    out DDRD, temp
+    ; –ø–µ—Ä–µ–º–µ–Ω–Ω—ã–µ —Å–æ—Å—Ç–æ—è–Ω–∏—è
+    ldi  r17, 0x01     ; –º–∞—Å–∫–∞ –∞–∫—Ç–∏–≤–Ω–æ–≥–æ —Ä–∞–∑—Ä—è–¥–∞
+    clr  r18            ; –∏–Ω–¥–µ–∫—Å –∞–∫—Ç–∏–≤–Ω–æ–≥–æ —Ä–∞–∑—Ä—è–¥–∞ (0..3)
+    clr  r19            ; —Ñ–ª–∞–≥ —Ä–µ–∂–∏–º–∞: 0=–æ—Ç–æ–±—Ä–∞–∂–µ–Ω–∏–µ, 1=–Ω–∞—Å—Ç—Ä–æ–π–∫–∞
+    clr  r20            ; —Å—á—ë—Ç—á–∏–∫ —Ç–∏–∫–æ–≤ —Ç–∞–π–º–µ—Ä–∞ (–º–ª–∞–¥—à–∏–π –±–∞–π—Ç)
+    clr  r21            ; —Å—á—ë—Ç—á–∏–∫ —Ç–∏–∫–æ–≤ —Ç–∞–π–º–µ—Ä–∞ (—Å—Ç–∞—Ä—à–∏–π –±–∞–π—Ç)
+    clr  r23            ; —Ç–µ–∫—É—â–µ–µ –∑–Ω–∞—á–µ–Ω–∏–µ —Å–µ–∫—É–Ω–¥ (0..9)
 
-    ; ËÌËˆË‡ÎËÁ‡ˆËˇ ÔÂÂÏÂÌÌ˚ı
-    clr temp
-    sts tick_cnt_l,  temp
-    sts tick_cnt_h,  temp
-    sts sec_tick_l,  temp
-    sts sec_tick_h,  temp
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp
-    sts hold_tick_l, temp
-    sts hold_tick_h, temp
-    sts rep_tick_l,  temp
-    sts rep_tick_h,  temp
+    out  PORTA, r17
 
-    sts mode,        temp   ; ÂÊËÏ ÓÚÓ·‡ÊÂÌËˇ
-    sts disp_fmt,    temp   ; ÙÓÏ‡Ú ◊◊.ÃÃ
-    sts edit_sel,    temp   ; Ì‡ÒÚ‡Ë‚‡ÂÏ ◊◊
-    sts blink_state, temp
+    ; ---- –Ω–∞—Å—Ç—Ä–æ–π–∫–∞ INT0 (–∫–Ω–æ–ø–∫–∞ PD2), –Ω–∞—Ä–∞—Å—Ç–∞—é—â–∏–π —Ñ—Ä–æ–Ω—Ç 0->1 ----
+    ; (–Ω–∞ –ø–ª–∞—Ç–µ —É—Ä–æ–≤–µ–Ω—å –ø–æ–∫–æ—è = 0 —É–∂–µ –æ–±–µ—Å–ø–µ—á–µ–Ω –∞–ø–ø–∞—Ä–∞—Ç–Ω–æ, –ø–æ–¥—Ç—è–∂–∫–∞ –Ω–µ –Ω—É–∂–Ω–∞)
+    ldi  r16, (1<<ISC01)|(1<<ISC00)
+    out  MCUCR, r16
+    ldi  r16, (1<<INT0)
+    out  GICR, r16
 
-    sts hh, temp
-    sts mm, temp
-    sts ss, temp
-
-    ldi temp, 1
-    sts btn0_prev, temp     ; ÍÌÓÔÍË ÌÂ Ì‡Ê‡Ú˚ (1)
-    sts btn1_prev, temp
-    clr temp
-    sts btn0_held, temp
-    sts btn1_held, temp
-
-    ; Ì‡ÒÚÓÈÍ‡ Timer0: /64, preload, ÔÂ˚‚‡ÌËÂ ÔÓ ÔÂÂÔÓÎÌÂÌË˛
-    ldi temp, T0_PRELOAD
-    out TCNT0, temp
-    ldi temp, (1<<CS01)|(1<<CS00)   ; ‰ÂÎËÚÂÎ¸ /64
-    out TCCR0, temp
-    ldi temp, (1<<TOIE0)            ; ‡ÁÂ¯‡ÂÏ ÔÂ˚‚‡ÌËÂ ÔÓ ÔÂÂÔÓÎÌÂÌË˛
-    out TIMSK, temp
-
-    ; Ì‡ÒÚÓÈÍ‡ INT0, INT1 ÔÓ ÙÓÌÚÛ 0?1
-    ldi temp, (1<<ISC11)|(1<<ISC10)|(1<<ISC01)|(1<<ISC00)
-    out MCUCR, temp
-    ldi temp, (1<<INT1)|(1<<INT0)
-    out GICR, temp
-    out GIFR, temp          ; Ò·‡Ò˚‚‡ÂÏ ÙÎ‡„Ë
+    ; ---- –Ω–∞—Å—Ç—Ä–æ–π–∫–∞ Timer0: Normal, –ø—Ä–µ–¥–¥–µ–ª–∏—Ç–µ–ª—å 64 ----
+    ldi  r16, (1<<CS01)|(1<<CS00)
+    out  TCCR0, r16
+    ldi  r16, (1<<TOIE0)
+    out  TIMSK, r16
 
     sei
 
-; ========= √À¿¬Õ€… ÷» À =========
-MAIN:
-    rcall BUTTONS_PD01      ; Ó·‡·ÓÚÍ‡ PD0/PD1 (ËÌÍÂÏÂÌÚ/‰ÂÍÂÏÂÌÚ)
-    rcall SHOW              ; ‚˚‚Ó‰ Ì‡ ËÌ‰ËÍ‡ÚÓ˚
-    rjmp MAIN
+MAIN_LOOP:
+    rjmp MAIN_LOOP
 
-; ========= œ–≈–€¬¿Õ»≈ TIMER0 (Í‡Ê‰˚Â 1 ÏÒ) =========
-TIMER0_ISR:
-    push temp
-    push temp1
-    in temp, SREG
-    push temp
-
-    ldi temp, T0_PRELOAD
-    out TCNT0, temp         ; ÔÂÂÁ‡„ÛÊ‡ÂÏ Ú‡ÈÏÂ
-
-    ; --- ËÌÍÂÏÂÌÚ Ó·˘Â„Ó Ò˜∏Ú˜ËÍ‡ ÚËÍÓ‚ ---
-    lds temp,  tick_cnt_l
-    lds temp1, tick_cnt_h
-    inc temp
-    brne TC_NO_CARRY
-    inc temp1
-TC_NO_CARRY:
-    sts tick_cnt_l, temp
-    sts tick_cnt_h, temp1
-
-    ; --- Ò˜∏Ú˜ËÍ ‰Îˇ ÒÂÍÛÌ‰˚ ---
-    lds temp,  sec_tick_l
-    lds temp1, sec_tick_h
-    inc temp
-    brne ST_NO_CARRY
-    inc temp1
-ST_NO_CARRY:
-    sts sec_tick_l, temp
-    sts sec_tick_h, temp1
-
-    ; ÔÓ‚ÂˇÂÏ: sec_tick >= 1000?
-    cpi temp1, TICKS_1SEC_H
-    brlo SEC_TICK_END
-    cpi temp,  TICKS_1SEC_L
-    brlo SEC_TICK_END
-
-    ; Ò·‡Ò˚‚‡ÂÏ sec_tick
-    clr temp
-    sts sec_tick_l, temp
-    sts sec_tick_h, temp
-
-    ; ‰Ó·‡‚ÎˇÂÏ ÒÂÍÛÌ‰Û ÚÓÎ¸ÍÓ ‚ ÂÊËÏÂ ÓÚÓ·‡ÊÂÌËˇ
-    lds temp, mode
-    tst temp
-    brne SEC_TICK_END       ; ‚ ÂÊËÏÂ Ì‡ÒÚÓÈÍË ó ÌÂ Ò˜ËÚ‡ÂÏ
-    rcall INC_TIME
-
-SEC_TICK_END:
-
-    ; --- Ò˜∏Ú˜ËÍ ‰Îˇ ÏË„‡ÌËˇ ---
-    lds temp,  blink_tick_l
-    lds temp1, blink_tick_h
-    inc temp
-    brne BT_NO_CARRY
-    inc temp1
-BT_NO_CARRY:
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp1
-
-    cpi temp1, TICKS_BLINK_H
-    brlo BLINK_END
-    cpi temp, TICKS_BLINK_L
-    brlo BLINK_END
-
-    clr temp
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp
-
-    lds temp, mode
-    tst temp
-    breq BLINK_RESET
-
-    lds temp, blink_state
-    ldi temp1, 1
-    eor temp, temp1
-    sts blink_state, temp
-    rjmp BLINK_END
-
-BLINK_RESET:
-    clr temp
-    sts blink_state, temp
-BLINK_END:
-
-    ; --- Ò˜∏Ú˜ËÍ Û‰ÂÊ‡ÌËˇ ÍÌÓÔÍË ---
-    ; Û‚ÂÎË˜Ë‚‡ÂÏ ÚÓÎ¸ÍÓ ÂÒÎË ÍÌÓÔÍ‡ Á‡Ê‡Ú‡
-    lds temp, btn0_held
-    tst temp
-    brne INC_HOLD
-    lds temp, btn1_held
-    tst temp
-    brne INC_HOLD
-    ; ÌË Ó‰Ì‡ ÌÂ Á‡Ê‡Ú‡ ó Ò·‡Ò˚‚‡ÂÏ
-    clr temp
-    sts hold_tick_l, temp
-    sts hold_tick_h, temp
-    sts rep_tick_l,  temp
-    sts rep_tick_h,  temp
-    rjmp ISR_END
-
-INC_HOLD:
-    lds temp,  hold_tick_l
-    lds temp1, hold_tick_h
-    ; Ó„‡ÌË˜Ë‚‡ÂÏ Ì‡ 4001 ˜ÚÓ·˚ ÌÂ ÔÂÂÔÓÎÌËÎÓÒ¸
-    cpi temp1, high(4001)
-    brsh HOLD_CAP
-    cpi temp,  low(4001)
-    brsh HOLD_CAP
-    inc temp
-    brne HT_NO_CARRY
-    inc temp1
-HT_NO_CARRY:
-    sts hold_tick_l, temp
-    sts hold_tick_h, temp1
-
-    ; --- Ò˜∏Ú˜ËÍ ÔÓ‚ÚÓÌÓ„Ó Ò‡·‡Ú˚‚‡ÌËˇ ---
-    lds temp,  rep_tick_l
-    lds temp1, rep_tick_h
-    inc temp
-    brne RT_NO_CARRY
-    inc temp1
-RT_NO_CARRY:
-    sts rep_tick_l, temp
-    sts rep_tick_h, temp1
-    rjmp ISR_END
-
-HOLD_CAP:
-    ; ÛÊÂ Ì‡ Ï‡ÍÒËÏÛÏÂ ó ÌË˜Â„Ó ÌÂ ‰ÂÎ‡ÂÏ
-ISR_END:
-    pop temp
-    out SREG, temp
-    pop temp1
-    pop temp
-    reti
-
-; ========= Œ¡–¿¡Œ“◊»  INT0 ó œ≈–≈ Àﬁ◊≈Õ»≈ Õ¿—“–Œ… ¿/Œ“Œ¡–¿∆≈Õ»≈ =========
+; ================================================================
+; INT0 - –Ω–∞–∂–∞—Ç–∏–µ –∫–Ω–æ–ø–∫–∏ PD2: –ø–µ—Ä–µ–∫–ª—é—á–∞–µ–º —Ä–µ–∂–∏–º
+; ================================================================
 INT0_ISR:
-    push temp
-    in temp, SREG
-    push temp
+    push r16
+    in   r16, SREG
+    push r16
 
-    lds temp, mode
-    ldi r18, 1
-    eor temp, r18           ; ËÌ‚ÂÚËÛÂÏ mode (0?1?0)
-    sts mode, temp
+    ldi  r16, 0x01
+    eor  r19, r16          ; –∏–Ω–≤–µ—Ä—Ç–∏—Ä—É–µ–º –±–∏—Ç —Ä–µ–∂–∏–º–∞
 
-    tst temp
-    brne INT0_TO_EDIT
-
-    ; ÔÂÂıÓ‰ËÏ ‚ ÂÊËÏ Œ“Œ¡–¿∆≈Õ»ﬂ
-    clr temp
-    sts blink_state, temp   ; „‡ÒËÏ ÏË„‡ÌËÂ
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp
-    rjmp INT0_END
-
-INT0_TO_EDIT:
-    ; ÔÂÂıÓ‰ËÏ ‚ ÂÊËÏ Õ¿—“–Œ… »
-    clr temp
-    sts edit_sel, temp      ; Ì‡˜ËÌ‡ÂÏ Ò ◊◊
-    sts blink_state, temp
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp
-
-INT0_END:
-    pop temp
-    out SREG, temp
-    pop temp
+    pop  r16
+    out  SREG, r16
+    pop  r16
     reti
 
-; ========= Œ¡–¿¡Œ“◊»  INT1 =========
-; ¬ ÂÊËÏÂ ÓÚÓ·‡ÊÂÌËˇ: ÔÂÂÍÎ˛˜‡ÂÚ ÙÓÏ‡Ú ◊◊.ÃÃ ? ÃÃ.——
-; ¬ ÂÊËÏÂ Ì‡ÒÚÓÈÍË:   ˆËÍÎË˜ÂÒÍË ÔÂÂÍÎ˛˜‡ÂÚ ◊◊?ÃÃ?——?◊◊
-INT1_ISR:
-    push temp
-    push temp1
-    in temp, SREG
-    push temp
-
-    lds temp, mode
-    tst temp
-    brne INT1_EDIT_MODE
-
-    ; --- ÂÊËÏ ÓÚÓ·‡ÊÂÌËˇ: ÏÂÌˇÂÏ ÙÓÏ‡Ú ---
-    lds temp, disp_fmt
-    ldi temp1, 1
-    eor temp, temp1         ; 0?1?0
-    sts disp_fmt, temp
-    rjmp INT1_END
-
-INT1_EDIT_MODE:
-    ; --- ÂÊËÏ Ì‡ÒÚÓÈÍË: ÒÎÂ‰Û˛˘ËÈ ˝ÎÂÏÂÌÚ ◊◊?ÃÃ?——?◊◊ ---
-    lds temp, edit_sel
-    inc temp
-    cpi temp, 3
-    brlo INT1_STORE_SEL
-    clr temp
-INT1_STORE_SEL:
-    sts edit_sel, temp
-
-    ; Ò·‡Ò˚‚‡ÂÏ ÏË„‡ÌËÂ
-    clr temp
-    sts blink_state, temp
-    sts blink_tick_l, temp
-    sts blink_tick_h, temp
-
-INT1_END:
-    pop temp
-    out SREG, temp
-    pop temp1
-    pop temp
-    reti
-
-; ========= Œ¡–¿¡Œ“ ¿  ÕŒœŒ  PD0 (+) » PD1 (-) =========
-; ¬˚Á˚‚‡ÂÚÒˇ ËÁ „Î‡‚ÌÓ„Ó ˆËÍÎ‡.
-; ÀÓ„ËÍ‡: Ì‡Ê‡ÚËÂ ? +1 Ò‡ÁÛ; ‰ÂÊËÏ >2Ò ? Í‡Ê‰˚Â 0.2Ò; ‰ÂÊËÏ >4Ò ? Í‡Ê‰˚Â 0.1Ò
-BUTTONS_PD01:
-    push temp
-    push temp1
-    push temp2
-
-    ; ‡·ÓÚ‡˛Ú ÚÓÎ¸ÍÓ ‚ ÂÊËÏÂ Ì‡ÒÚÓÈÍË
-    lds temp, mode
-    tst temp
-    brne BTN_ACTIVE
-    rjmp BTN_END
-BTN_ACTIVE:
-
-    in temp, PIND
-
-    ; ---- PD0 (Û‚ÂÎË˜ËÚ¸) ----
-    sbrs temp, 0            ; ÂÒÎË PD0=1 (ÌÂ Ì‡Ê‡Ú‡) ? ÔÂÂÈÚË Í ÓÚÔÛÒÍ‡ÌË˛
-    rjmp PD0_IS_PRESSED
-
-PD0_RELEASED:
-    ldi temp1, 1
-    sts btn0_prev, temp1
-    clr temp1
-    sts btn0_held, temp1
-    rjmp CHECK_PD1_BTN
-
-PD0_IS_PRESSED:
-    ; ÍÌÓÔÍ‡ Ì‡Ê‡Ú‡ (PD0=0)
-    lds temp1, btn0_prev
-    tst temp1
-    breq PD0_HELD           ; ÛÊÂ ·˚Î‡ Ì‡Ê‡Ú‡ ó Ó·‡·‡Ú˚‚‡ÂÏ Û‰ÂÊ‡ÌËÂ
-
-    ; ÔÂ‚ÓÂ Ì‡Ê‡ÚËÂ
-    clr temp1
-    sts btn0_prev, temp1
-    ldi temp1, 1
-    sts btn0_held, temp1
-    ; Ò·‡Ò˚‚‡ÂÏ Ò˜∏Ú˜ËÍË
-    clr temp1
-    sts hold_tick_l, temp1
-    sts hold_tick_h, temp1
-    sts rep_tick_l,  temp1
-    sts rep_tick_h,  temp1
-    rcall INC_EDIT          ; ÌÂÏÂ‰ÎÂÌÌÓ +1
-    rjmp CHECK_PD1_BTN
-
-PD0_HELD:
-    ; ÍÌÓÔÍ‡ Û‰ÂÊË‚‡ÂÚÒˇ
-    ldi temp1, 1
-    sts btn0_held, temp1
-    rcall CHECK_REPEAT_INC
-    rjmp CHECK_PD1_BTN
-
-    ; ---- PD1 (ÛÏÂÌ¸¯ËÚ¸) ----
-CHECK_PD1_BTN:
-    in temp, PIND
-    sbrs temp, 1
-    rjmp PD1_IS_PRESSED
-
-PD1_RELEASED:
-    ldi temp1, 1
-    sts btn1_prev, temp1
-    clr temp1
-    sts btn1_held, temp1
-    rjmp BTN_END
-
-PD1_IS_PRESSED:
-    lds temp1, btn1_prev
-    tst temp1
-    breq PD1_HELD
-
-    ; ÔÂ‚ÓÂ Ì‡Ê‡ÚËÂ
-    clr temp1
-    sts btn1_prev, temp1
-    ldi temp1, 1
-    sts btn1_held, temp1
-    clr temp1
-    sts hold_tick_l, temp1
-    sts hold_tick_h, temp1
-    sts rep_tick_l,  temp1
-    sts rep_tick_h,  temp1
-    rcall DEC_EDIT          ; ÌÂÏÂ‰ÎÂÌÌÓ -1
-    rjmp BTN_END
-
-PD1_HELD:
-    ldi temp1, 1
-    sts btn1_held, temp1
-    rcall CHECK_REPEAT_DEC
-
-BTN_END:
-    pop temp2
-    pop temp1
-    pop temp
-    ret
-
-; ========= œ–Œ¬≈– ¿ œŒ¬“Œ–ÕŒ√Œ —–¿¡¿“€¬¿Õ»ﬂ (‰Îˇ +) =========
-; —ÏÓÚËÏ hold_tick Ë rep_tick, Â¯‡ÂÏ ó ÔÓ‡ ÎË ÒÌÓ‚‡ +1
-CHECK_REPEAT_INC:
-    push temp
-    push temp1
-    push temp2
-
-    rcall GET_REPEAT_INTERVAL  ; ‚ temp2:temp1 ó ÌÛÊÌ˚È ËÌÚÂ‚‡Î (ËÎË 0 ÂÒÎË ‡ÌÓ)
-    tst temp2
-    breq CRI_NO_ACTION
-    tst temp1
-    breq CRI_NO_ACTION
-
-    ; Ò‡‚ÌË‚‡ÂÏ rep_tick >= ËÌÚÂ‚‡Î
-    lds temp,  rep_tick_h
-    cp  temp,  temp2
-    brlo CRI_NO_ACTION
-    brne CRI_DO             ; H > ÌÛÊÌÓ„Ó
-    lds temp,  rep_tick_l
-    cp  temp,  temp1
-    brlo CRI_NO_ACTION
-
-CRI_DO:
-    ; Ò·‡Ò˚‚‡ÂÏ rep_tick
-    clr temp
-    sts rep_tick_l, temp
-    sts rep_tick_h, temp
-    rcall INC_EDIT
-
-CRI_NO_ACTION:
-    pop temp2
-    pop temp1
-    pop temp
-    ret
-
-; ========= œ–Œ¬≈– ¿ œŒ¬“Œ–ÕŒ√Œ —–¿¡¿“€¬¿Õ»ﬂ (‰Îˇ -) =========
-CHECK_REPEAT_DEC:
-    push temp
-    push temp1
-    push temp2
-
-    rcall GET_REPEAT_INTERVAL
-    tst temp2
-    breq CRD_NO_ACTION
-    tst temp1
-    breq CRD_NO_ACTION
-
-    lds temp,  rep_tick_h
-    cp  temp,  temp2
-    brlo CRD_NO_ACTION
-    brne CRD_DO
-    lds temp,  rep_tick_l
-    cp  temp,  temp1
-    brlo CRD_NO_ACTION
-
-CRD_DO:
-    clr temp
-    sts rep_tick_l, temp
-    sts rep_tick_h, temp
-    rcall DEC_EDIT
-
-CRD_NO_ACTION:
-    pop temp2
-    pop temp1
-    pop temp
-    ret
-
-; ========= œŒÀ”◊»“‹ »Õ“≈–¬¿À œŒ¬“Œ–¿ =========
-; ¬ÓÁ‚‡˘‡ÂÚ ‚ temp2:temp1 ÌÛÊÌ˚È ËÌÚÂ‚‡Î ‚ ÚËÍ‡ı
-; ≈ÒÎË Û‰ÂÊ‡ÌËÂ Â˘∏ ÏÂÌ¸¯Â 2Ò ó ‚ÓÁ‚‡˘‡ÂÚ 0:0 (ÌÂ ÔÓ‚ÚÓˇÚ¸)
-GET_REPEAT_INTERVAL:
-    ; ˜ËÚ‡ÂÏ hold_tick
-    lds temp,  hold_tick_h
-    lds temp1, hold_tick_l  ; temp:temp1 = hold_tick (H:L)
-
-    ; hold >= 4000? ? ËÌÚÂ‚‡Î 100 ÏÒ
-    cpi temp, TICKS_HOLD4_H
-    brlo GRI_CHECK2
-    cpi temp1, TICKS_HOLD4_L
-    brlo GRI_CHECK2
-    ldi temp2, TICKS_VFAST_H
-    ldi temp1, TICKS_VFAST_L
-    ret
-
-GRI_CHECK2:
-    ; hold >= 2000? ? ËÌÚÂ‚‡Î 200 ÏÒ
-    cpi temp, TICKS_HOLD2_H
-    brlo GRI_TOO_EARLY
-    cpi temp1, TICKS_HOLD2_L
-    brlo GRI_TOO_EARLY
-    ldi temp2, TICKS_FAST_H
-    ldi temp1, TICKS_FAST_L
-    ret
-
-GRI_TOO_EARLY:
-    ; Â˘∏ ‡ÌÓ
-    clr temp2
-    clr temp1
-    ret
-
-; ========= ”¬≈À»◊»“‹ Õ¿—“–¿»¬¿≈Ã€… ›À≈Ã≈Õ“ =========
-INC_EDIT:
-    push temp
-    push temp1
-
-    lds temp1, edit_sel
-    cpi temp1, 0
-    breq INC_HH
-    cpi temp1, 1
-    breq INC_MM
-    rjmp INC_SS
-
-INC_HH:
-    lds temp, hh
-    inc temp
-    cpi temp, 24
-    brlo INC_HH_OK
-    clr temp
-INC_HH_OK:
-    sts hh, temp
-    rjmp INC_EDIT_END
-
-INC_MM:
-    lds temp, mm
-    inc temp
-    cpi temp, 60
-    brlo INC_MM_OK
-    clr temp
-INC_MM_OK:
-    sts mm, temp
-    rjmp INC_EDIT_END
-
-INC_SS:
-    lds temp, ss
-    inc temp
-    cpi temp, 60
-    brlo INC_SS_OK
-    clr temp
-INC_SS_OK:
-    sts ss, temp
-
-INC_EDIT_END:
-    pop temp1
-    pop temp
-    ret
-
-; ========= ”Ã≈Õ‹ÿ»“‹ Õ¿—“–¿»¬¿≈Ã€… ›À≈Ã≈Õ“ =========
-DEC_EDIT:
-    push temp
-    push temp1
-
-    lds temp1, edit_sel
-    cpi temp1, 0
-    breq DEC_HH
-    cpi temp1, 1
-    breq DEC_MM
-    rjmp DEC_SS
-
-DEC_HH:
-    lds temp, hh
-    tst temp
-    brne DEC_HH_NOROLL
-    ldi temp, 24
-DEC_HH_NOROLL:
-    dec temp
-    sts hh, temp
-    rjmp DEC_EDIT_END
-
-DEC_MM:
-    lds temp, mm
-    tst temp
-    brne DEC_MM_NOROLL
-    ldi temp, 60
-DEC_MM_NOROLL:
-    dec temp
-    sts mm, temp
-    rjmp DEC_EDIT_END
-
-DEC_SS:
-    lds temp, ss
-    tst temp
-    brne DEC_SS_NOROLL
-    ldi temp, 60
-DEC_SS_NOROLL:
-    dec temp
-    sts ss, temp
-
-DEC_EDIT_END:
-    pop temp1
-    pop temp
-    ret
-
-; ========= »Õ –≈Ã≈Õ“ ¬–≈Ã≈Õ» (+1 ÒÂÍÛÌ‰‡) =========
-INC_TIME:
-    push temp
-
-    lds temp, ss
-    inc temp
-    cpi temp, 60
-    brlo IT_SS_OK
-    clr temp
-    sts ss, temp
-
-    lds temp, mm
-    inc temp
-    cpi temp, 60
-    brlo IT_MM_OK
-    clr temp
-    sts mm, temp
-
-    lds temp, hh
-    inc temp
-    cpi temp, 24
-    brlo IT_HH_OK
-    clr temp
-IT_HH_OK:
-    sts hh, temp
-    rjmp IT_END
-
-IT_MM_OK:
-    sts mm, temp
-    rjmp IT_END
-
-IT_SS_OK:
-    sts ss, temp
-
-IT_END:
-    pop temp
-    ret
-
-; ========= ¬€¬Œƒ Õ¿ »Õƒ» ¿“Œ–€ =========
-; –‡Áˇ‰˚: 1=ÒÚ‡¯ËÈ ÎÂ‚˚È, 4=ÏÎ‡‰¯ËÈ Ô‡‚˚È
-; ‘ÓÏ‡Ú ◊◊.ÃÃ: [˜10][˜1.][Ï10][Ï1]
-; ‘ÓÏ‡Ú ÃÃ.——: [Ï10][Ï1.][Ò10][Ò1]
-;
-; ÃË„‡ÌËÂ: ÂÒÎË mode=1 Ë blink_state=1, Ì‡ÒÚ‡Ë‚‡ÂÏ˚Â ‰‚‡ ‡Áˇ‰‡ „‡ÒËÏ
-SHOW:
-    push temp
-    push temp1
-    push temp2
-    push temp3
-
-    ; ÓÔÂ‰ÂÎˇÂÏ ˜ÚÓ ÔÓÍ‡Á˚‚‡Ú¸
-    lds temp3, disp_fmt     ; 0=◊◊.ÃÃ, 1=ÃÃ.——
-
-    tst temp3
-    brne SHOW_MMSS
-
-    ; === ÙÓÏ‡Ú ◊◊.ÃÃ ===
-    lds temp,  hh
-    rcall SPLIT_TENS        ; temp2=‰ÂÒˇÚÍË, temp1=Â‰ËÌËˆ˚
-    mov temp3, temp2        ; d1 = ˜10
-    push temp1              ; ÒÚÂÍ: ˜1
-
-    lds temp,  mm
-    rcall SPLIT_TENS
-    push temp2              ; ÒÚÂÍ: ˜1, Ï10
-    push temp1              ; ÒÚÂÍ: ˜1, Ï10, Ï1
-
-    ; ÔËÏÂÌˇÂÏ ÏË„‡ÌËÂ Í ◊◊ (edit_sel=0) ËÎË ÃÃ (edit_sel=1)
-    rcall APPLY_BLINK_HHMM
-    rjmp SHOW_DISPLAY
-
-SHOW_MMSS:
-    ; === ÙÓÏ‡Ú ÃÃ.—— ===
-    lds temp,  mm
-    rcall SPLIT_TENS
-    mov temp3, temp2        ; d1 = Ï10
-    push temp1              ; ÒÚÂÍ: Ï1
-
-    lds temp,  ss
-    rcall SPLIT_TENS
-    push temp2              ; ÒÚÂÍ: Ï1, Ò10
-    push temp1              ; ÒÚÂÍ: Ï1, Ò10, Ò1
-
-    ; ÔËÏÂÌˇÂÏ ÏË„‡ÌËÂ Í ÃÃ (edit_sel=1) ËÎË —— (edit_sel=2)
-    rcall APPLY_BLINK_MMSS
-
-SHOW_DISPLAY:
-    ; ÒÚÂÍ ÒÓ‰ÂÊËÚ d4, d3, d2 (ÒÌËÁÛ ‚‚Âı), temp3=d1
-    ; ËÁ‚ÎÂÍ‡ÂÏ
-    pop temp2               ; d4 (Â‰ËÌËˆ˚ Ô‡‚Ó„Ó)
-    pop temp1               ; d3 (‰ÂÒˇÚÍË Ô‡‚Ó„Ó)
-    pop temp                ; d2 (Â‰ËÌËˆ˚ ÎÂ‚Ó„Ó)
-    ; temp3 = d1 (‰ÂÒˇÚÍË ÎÂ‚Ó„Ó)
-
-    ; --- ‡Áˇ‰ 1 (Ò‡Ï˚È ÎÂ‚˚È, PA3) ---
-    push temp
-    push temp1
-    push temp2
-    clr temp
-    out PORTA, temp
-    mov temp1, temp3
-    rcall DIG
-    ldi temp, 0x08
-    out PORTA, temp
-    rcall SMALL
-
-    ; --- ‡Áˇ‰ 2 (PA2) + ÚÓ˜Í‡ ---
-    pop temp2
-    pop temp1
-    pop temp
-    push temp1
-    push temp2
-    clr r20
-    out PORTA, r20
-    mov temp1, temp
-    rcall DIG
-    ori temp, 0x80          ; ÚÓ˜Í‡
-    out PORTC, temp
-    ldi temp, 0x04
-    out PORTA, temp
-    rcall SMALL
-
-    ; --- ‡Áˇ‰ 3 (PA1) ---
-    pop temp2
-    pop temp1
-    clr temp
-    out PORTA, temp
-    mov temp1, temp1
-    rcall DIG
-    ldi temp, 0x02
-    out PORTA, temp
-    rcall SMALL
-
-    ; --- ‡Áˇ‰ 4 (PA0, Ò‡Ï˚È Ô‡‚˚È) ---
-    clr temp
-    out PORTA, temp
-    mov temp1, temp2
-    rcall DIG
-    ldi temp, 0x01
-    out PORTA, temp
-    rcall SMALL
-
-    ; „‡ÒËÏ ‚ÒÂ ‡Áˇ‰˚
-    clr temp
-    out PORTA, temp
-
-    pop temp3
-    pop temp2
-    pop temp1
-    pop temp
-    ret
-
-; ========= œ–»Ã≈Õ»“‹ Ã»√¿Õ»≈ ƒÀﬂ ◊◊.ÃÃ =========
-; Õ‡ ÒÚÂÍÂ (ÒÌËÁÛ): ˜1, Ï10, Ï1; temp3=˜10
-; ≈ÒÎË mode=1 Ë blink_state=1:
-;   edit_sel=0 (◊◊): „‡ÒËÏ ˜10 Ë ˜1
-;   edit_sel=1 (ÃÃ): „‡ÒËÏ Ï10 Ë Ï1
-APPLY_BLINK_HHMM:
-    push temp
-    push temp1
-    lds temp, mode
-    tst temp
-    breq ABH_END
-    lds temp, blink_state
-    tst temp                  ; ÂÒÎË blink_state=1 ó „‡ÒËÏ
-    breq ABH_END
-
-    lds temp1, edit_sel
-    cpi temp1, 0
-    brne ABH_CHECK_MM
-    ; === √‡ÒËÏ ◊◊ (‡Áˇ‰˚ 1 Ë 2) ===
-    clr temp3                 ; ˜10
-    in YL, SPL
-    in YH, SPH
-    clr temp
-    std Y+2, temp             ; ˜1 (Ô‡‚ËÎ¸ÌÓÂ ÒÏÂ˘ÂÌËÂ!)
-    rjmp ABH_END
-
-ABH_CHECK_MM:
-    cpi temp1, 1
-    brne ABH_END
-    ; === √‡ÒËÏ ÃÃ (‡Áˇ‰˚ 3 Ë 4) ===
-    in YL, SPL
-    in YH, SPH
-    clr temp
-    std Y+0, temp             ; Ï1
-    std Y+1, temp             ; Ï10
-ABH_END:
-    pop temp1
-    pop temp
-    ret
-
-; ========= œ–»Ã≈Õ»“‹ Ã»√¿Õ»≈ ƒÀﬂ ÃÃ.—— =========
-; Õ‡ ÒÚÂÍÂ (ÒÌËÁÛ): Ï1, Ò10, Ò1; temp3=Ï10
-; edit_sel=1 (ÃÃ): „‡ÒËÏ Ï10 Ë Ï1
-; edit_sel=2 (——): „‡ÒËÏ Ò10 Ë Ò1
-APPLY_BLINK_MMSS:
-    push temp
-    push temp1
-    lds temp, mode
-    tst temp
-    breq ABM_END
-    lds temp, blink_state
-    tst temp
-    breq ABM_END
-
-    lds temp1, edit_sel
-    cpi temp1, 1
-    brne ABM_CHECK_SS
-    ; === √‡ÒËÏ ÃÃ ===
-    clr temp3                 ; Ï10
-    in YL, SPL
-    in YH, SPH
-    clr temp
-    std Y+2, temp             ; Ï1
-    rjmp ABM_END
-
-ABM_CHECK_SS:
-    cpi temp1, 2
-    brne ABM_END
-    ; === √‡ÒËÏ —— ===
-    in YL, SPL
-    in YH, SPH
-    clr temp
-    std Y+0, temp             ; Ò1
-    std Y+1, temp             ; Ò10
-ABM_END:
-    pop temp1
-    pop temp
-    ret
-
-; ========= –¿«¡»“‹ ◊»—ÀŒ Õ¿ ƒ≈—ﬂ“ » » ≈ƒ»Õ»÷€ =========
-; ¬ıÓ‰:  temp = ˜ËÒÎÓ (0-59 ËÎË 0-23)
-; ¬˚ıÓ‰: temp2 = ‰ÂÒˇÚÍË, temp1 = Â‰ËÌËˆ˚
-SPLIT_TENS:
-    push temp
-    clr temp2
-ST_LOOP:
-    cpi temp, 10
-    brlo ST_DONE
-    subi temp, 10
-    inc temp2
-    rjmp ST_LOOP
-ST_DONE:
-    mov temp1, temp
-    pop temp
-    ret
-
-; ========= ¬€¬≈—“» ÷»‘–” Õ¿ PORTC =========
-; ¬ıÓ‰: temp1 = ˆËÙ‡ (0-9)
-DIG:
+; ================================================================
+; Timer0 Overflow - –∫–∞–∂–¥—ã–µ ~2.048 –º—Å:
+;   —á–∞—Å—Ç—å 1 - –º—É–ª—å—Ç–∏–ø–ª–µ–∫—Å–∏—Ä–æ–≤–∞–Ω–∏–µ —Ä–∞–∑—Ä—è–¥–æ–≤
+;   —á–∞—Å—Ç—å 2 - —Ä–∞–∑ –≤ —Å–µ–∫—É–Ω–¥—É (–µ—Å–ª–∏ —Ä–µ–∂–∏–º=0) —É–≤–µ–ª–∏—á–∏–≤–∞–µ–º —Å–µ–∫—É–Ω–¥—ã
+; ================================================================
+TIMER0_OVF_ISR:
+    push r16
+    in   r16, SREG
+    push r16
+    push YL
+    push YH
     push ZL
     push ZH
-    ldi ZH, high(TAB*2)
-    ldi ZL, low(TAB*2)
-    add ZL, temp1
-    clr temp
-    adc ZH, temp
-    lpm temp, Z
-    out PORTC, temp
-    pop ZH
-    pop ZL
-    ret
 
-; ========= œ¿”«¿ ƒÀﬂ Ã”À‹“»œÀ≈ —»–Œ¬¿Õ»ﬂ =========
-SMALL:
-    ldi temp2, 120
-SMALL_LOOP:
-    dec temp2
-    brne SMALL_LOOP
-    ret
+    ; ---------- —á–∞—Å—Ç—å 1: –ø–µ—Ä–µ–∫–ª—é—á–µ–Ω–∏–µ –∞–∫—Ç–∏–≤–Ω–æ–≥–æ —Ä–∞–∑—Ä—è–¥–∞ ----------
+    clr  r16
+    out  PORTA, r16          ; –≥–∞—Å–∏–º –≤—Å–µ —Ä–∞–∑—Ä—è–¥—ã –Ω–∞ –º–æ–º–µ–Ω—Ç —Å–º–µ–Ω—ã –¥–∞–Ω–Ω—ã—Ö
 
-; ========= “¿¡À»÷¿ —≈√Ã≈Õ“Œ¬ (0-9) =========
-TAB:
-    .db 0x3F, 0x06  ; 0, 1
-    .db 0x5B, 0x4F  ; 2, 3
-    .db 0x66, 0x6D  ; 4, 5
-    .db 0x7D, 0x07  ; 6, 7
-    .db 0x7F, 0x6F  ; 8, 9
+    inc  r18
+    cpi  r18, 4
+    brne PART1_NOWRAP
+    clr  r18
+PART1_NOWRAP:
+
+    ldi  YL, LOW(digit_buffer)
+    ldi  YH, HIGH(digit_buffer)
+    clr  r16
+    add  YL, r18
+    adc  YH, r16
+    ld   r16, Y
+    out  PORTC, r16
+
+    cpi  r18, 0
+    breq PART1_M0
+    cpi  r18, 1
+    breq PART1_M1
+    cpi  r18, 2
+    breq PART1_M2
+    ldi  r17, 0x08
+    rjmp PART1_SETDIGIT
+PART1_M0:
+    ldi  r17, 0x01
+    rjmp PART1_SETDIGIT
+PART1_M1:
+    ldi  r17, 0x02
+    rjmp PART1_SETDIGIT
+PART1_M2:
+    ldi  r17, 0x04
+PART1_SETDIGIT:
+    out  PORTA, r17
+
+    ; ---------- —á–∞—Å—Ç—å 2: —Å–µ–∫—É–Ω–¥–Ω—ã–π –∏–Ω—Ç–µ—Ä–≤–∞–ª ----------
+    inc  r20
+    brne PART2_NOCARRY
+    inc  r21
+PART2_NOCARRY:
+    ldi  r16, LOW(488)
+    cp   r20, r16
+    ldi  r16, HIGH(488)
+    cpc  r21, r16
+    brlo PART2_DONE
+
+    clr  r20
+    clr  r21
+
+    sbrc r19, 0              ; –µ—Å–ª–∏ –±–∏—Ç0=1 (–Ω–∞—Å—Ç—Ä–æ–π–∫–∞/–ø–∞—É–∑–∞) -> –ø—Ä–æ–ø—É—Å–∫–∞–µ–º –∏–Ω–∫—Ä–µ–º–µ–Ω—Ç
+    rjmp PART2_DONE
+
+    inc  r23
+    cpi  r23, 10
+    brne PART2_UPDATE
+    clr  r23
+PART2_UPDATE:
+    ldi  ZL, LOW(SEG_TABLE*2)
+    ldi  ZH, HIGH(SEG_TABLE*2)
+    clr  r16
+    add  ZL, r23
+    adc  ZH, r16
+    lpm  r16, Z
+
+    ldi  YL, LOW(digit_buffer)
+    ldi  YH, HIGH(digit_buffer)
+    st   Y, r16              ; digit_buffer[0] = –Ω–æ–≤—ã–π –∫–æ–¥ —Å–µ–∫—É–Ω–¥
+
+PART2_DONE:
+    pop  ZH
+    pop  ZL
+    pop  YH
+    pop  YL
+    pop  r16
+    out  SREG, r16
+    pop  r16
+    reti
