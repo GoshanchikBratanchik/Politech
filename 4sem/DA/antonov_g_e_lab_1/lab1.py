@@ -18,7 +18,7 @@ def f_create(path):
         dir_name = os.path.dirname(path)
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
-        with open(path, 'w', encoding='utf-8'):
+        with open(path, "w", encoding="utf-8"):
             pass
         print(f"[+] File created successfully: {path}")
 
@@ -60,7 +60,7 @@ def f_write(path, content):
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
 
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
         print(f"[+] Content written successfully to: {path}")
@@ -80,7 +80,7 @@ def f_read(path):
         if os.path.isdir(path):
             raise IsADirectoryError(f"Path '{path}' is a directory")
 
-        with open(path, 'r', encoding='utf-8') as f:
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read()
 
         print(f"[+] File read successfully: {path}")
@@ -116,6 +116,7 @@ def f_copy(src, dest):
         print(f"[-] Failed to copy file from '{src}' to '{dest}'. {e}")
         raise
 
+
 def f_rename(src, dest):
     try:
         validate_path(src)
@@ -142,11 +143,11 @@ def f_rename(src, dest):
 
 def main():
     ZOV = argparse.ArgumentParser()
-    ZOV.add_argument('command')
-    ZOV.add_argument('--path')
-    ZOV.add_argument('--src')
-    ZOV.add_argument('--dest')
-    ZOV.add_argument('--content')
+    ZOV.add_argument("command")
+    ZOV.add_argument("--path")
+    ZOV.add_argument("--src")
+    ZOV.add_argument("--dest")
+    ZOV.add_argument("--content")
     args = ZOV.parse_args()
     if args.command == "create":
         f_create(args.path)
@@ -161,7 +162,7 @@ def main():
     elif args.command == "rename":
         f_rename(args.src, args.dest)
     else:
-        parser.print_help()
+        ZOV.print_help()
 
 
 if __name__ == "__main__":
