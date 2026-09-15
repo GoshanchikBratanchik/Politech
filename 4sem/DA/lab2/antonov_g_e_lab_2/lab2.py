@@ -1,10 +1,7 @@
 import re
 import requests
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json, text/plain, */*"
-}
+HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json, text/plain, */*"}
 
 BASE_URL = "https://ruz.spbstu.ru"
 
@@ -13,7 +10,9 @@ GROUP_SEARCH_URL = f"{BASE_URL}/search/groups"
 
 SCHEDULE_TEACHER_URL = f"{BASE_URL}/api/v1/ruz/teachers/{{id}}/scheduler"
 SCHEDULE_GROUP_URL = f"{BASE_URL}/api/v1/ruz/scheduler/{{id}}"
-SCHEDULE_ROOM_URL = f"{BASE_URL}/api/v1/ruz/buildings/{{building_id}}/rooms/{{room_id}}/scheduler"
+SCHEDULE_ROOM_URL = (
+    f"{BASE_URL}/api/v1/ruz/buildings/{{building_id}}/rooms/{{room_id}}/scheduler"
+)
 BUILDINGS_URL = f"{BASE_URL}/api/v1/ruz/buildings"
 ROOMS_URL = f"{BASE_URL}/api/v1/ruz/buildings/{{building_id}}/rooms"
 
@@ -39,11 +38,13 @@ def _safe_get_text(url, params=None):
 def _find_teacher_id_by_name(teacher_name):
     html = _safe_get_text(TEACHER_SEARCH_URL, params={"q": teacher_name})
 
-    matches = re.findall(r'href=["\'](?:https://ruz\.spbstu\.ru)?/teachers/(\d+)["\']', html)
+    matches = re.findall(
+        r'href=["\'](?:https://ruz\.spbstu\.ru)?/teachers/(\d+)["\']', html
+    )
     if matches:
         return int(matches[0])
 
-    matches = re.findall(r'/teachers/(\d+)', html)
+    matches = re.findall(r"/teachers/(\d+)", html)
     if matches:
         return int(matches[0])
 
@@ -53,11 +54,11 @@ def _find_teacher_id_by_name(teacher_name):
 def _find_group_id_by_name(group_name):
     html = _safe_get_text(GROUP_SEARCH_URL, params={"q": group_name})
 
-    matches = re.findall(r'/faculty/\d+/groups/(\d+)', html)
+    matches = re.findall(r"/faculty/\d+/groups/(\d+)", html)
     if matches:
         return int(matches[0])
 
-    matches = re.findall(r'/groups/(\d+)', html)
+    matches = re.findall(r"/groups/(\d+)", html)
     if matches:
         return int(matches[0])
 
@@ -115,27 +116,21 @@ def _extract_lesson_fields(lesson):
     teacher = None
     if teachers:
         teacher = ",".join(
-            t.get("full_name", "None")
-            for t in teachers
-            if isinstance(t, dict)
+            t.get("full_name", "None") for t in teachers if isinstance(t, dict)
         )
 
     groups = lesson.get("groups", [])
     group_names = None
     if groups:
         group_names = ",".join(
-            g.get("name", "None")
-            for g in groups
-            if isinstance(g, dict)
+            g.get("name", "None") for g in groups if isinstance(g, dict)
         )
 
     auditories = lesson.get("auditories", [])
     place = None
     if auditories:
         place = ",".join(
-            a.get("name", "None")
-            for a in auditories
-            if isinstance(a, dict)
+            a.get("name", "None") for a in auditories if isinstance(a, dict)
         )
 
     return {
@@ -212,8 +207,8 @@ def get_room_schedule(building_name, room_name, date):
 
 
 if __name__ == "__main__":
-    print(get_teacher_schedule("Писков Александр Александрович", "2026-04-17"))
+    print(get_teacher_schedule("Писков Александр Александрович", "2026-09-15"))
     print("-----")
-    print(get_group_schedule("5131001/30502", "2026-04-17"))
+    print(get_group_schedule("5151001/40202", "2026-09-15"))
     print("-----")
-    print(get_room_schedule("11-й учебный корпус", "336", "2026-04-17"))
+    print(get_room_schedule("Главное здание", "237", "2026-09-15"))
