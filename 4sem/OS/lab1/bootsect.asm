@@ -18,6 +18,7 @@ start:
   mov al, 't'
   int 0x10
 
+  mov dl, 1
   mov ah, 0
   int 0x13
 
@@ -45,22 +46,6 @@ start:
   mov cr0, eax
   jmp dword 0x8:protected_mode 
 
-[BITS 32]
-protected_mode:
-  mov ax, 0x10
-  mov es, ax
-  mov ds, ax
-  mov ss, ax
-  mov esp, 0x90000
-
-  call 0x10000
-
-inf_loop:
-  jmp inf_loop
-
-  times (512 - ($ - start) - 2) db 0
-  db 0x55, 0xAA
-
 error_read:
   mov ah, 0x0e
   mov al, 'E'
@@ -73,5 +58,21 @@ gdt:
   db 0xff, 0xff, 0x00, 0x00, 0x00, 0x92, 0xCF, 0x00
 
 gdt_info:
-  dw gdt_info - gdt
+  dw gdt_info - gdt - 1
   dw gdt, 0
+
+[BITS 32]
+protected_mode:
+  mov ax, 0x10
+  mov es, ax
+  mov ds, ax
+  mov ss, ax
+  mov esp, 0x90000
+  call 0x10000
+
+inf_loop:
+  jmp inf_loop
+
+  times (512 - ($ - start) - 2) db 0
+  db 0x55, 0xAA
+
