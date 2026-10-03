@@ -8,16 +8,6 @@ start:
   mov sp, start
   mov ah, 0x0e
   
-  mov al, 'b'
-  int 0x10
-
-  mov al, 'o'
-  int 0x10
-  int 0x10
-
-  mov al, 't'
-  int 0x10
-
   mov dl, 1
   mov ah, 0
   int 0x13
@@ -35,6 +25,43 @@ start:
   int 0x13
   jc error_read
 
+  mov ah, 0x00
+  mov al, 0x03
+  int 0x10
+
+  mov ah, 0x02
+  mov bh, 0
+  mov dh, 0
+  mov dl, 0
+  int 0x10
+
+  mov si, loading_str
+  call puts
+  
+  mov ah, 0x02
+  mov bh, 0
+  mov dh, 1
+  mov dl, 0
+  int 0x10
+  xor cl, 0
+  mov al, 3
+  
+  puts_cycle:
+    cmp cl, 0x06
+    je end_puts_cycle
+    movzx si, cl
+    shl si, 3
+    add si, colors
+    add cl, 1
+    mov ah, 0x02
+    mov dh, al
+    int 0x10
+    add al, 1
+    call puts
+    jmp puts_cycle
+
+    end_puts_cycle: ret
+
   cli
   lgdt [gdt_info]
   in al, 0x92
@@ -45,6 +72,26 @@ start:
   or al, 1
   mov cr0, eax
   jmp dword 0x8:protected_mode 
+
+loading_str: db "Loading...", 0
+colors:    
+  db "gray", 0, 0, 0, 0
+  db "cyan", 0, 0, 0, 0
+  db "white", 0, 0, 0
+  db "green", 0, 0, 0
+  db "yellow", 0, 0
+  db "magenta", 0
+
+puts:
+  mov al, [si]
+  test al, al
+  jz end_puts
+  mov ah, 0x0e
+  int 0x10
+  add si, 1
+  jmp puts
+
+  end_puts: ret
 
 error_read:
   mov ah, 0x0e
