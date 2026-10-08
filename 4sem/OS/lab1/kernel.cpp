@@ -18,8 +18,8 @@ const char *g_test = "i love ibks";
 
 extern "C" int kmain() {
   const char *hello = "Welcome to CurlyHackOS!";
-  out_str(0x0B, hello, 6);
-  out_str(0x0B, g_test, 7);
+  out_str(0x0B, hello, 9);
+  out_str(0x0B, g_test, 10);
 
   while (1) {
     asm("hlt");

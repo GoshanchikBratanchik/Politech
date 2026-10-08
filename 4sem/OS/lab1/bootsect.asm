@@ -1,3 +1,4 @@
+MENU_TAB equ 2
 [BITS 16]
 [ORG 0x7C00]
 
@@ -43,25 +44,57 @@ start:
   mov dh, 1
   mov dl, 0
   int 0x10
-  xor cl, 0
-  mov al, 3
-  
+  xor cl, cl
+menu_loop:
+
   puts_cycle:
     cmp cl, 0x06
     je end_puts_cycle
     movzx si, cl
-    shl si, 3
+    shl si, 4
     add si, colors
-    add cl, 1
     mov ah, 0x02
-    mov dh, al
+    mov dh, cl
+    add dh, MENU_TAB
     int 0x10
-    add al, 1
     call puts
+    mov si, marker
+    cmp cl, [selected]
+    je marker_set
+    mov si, no_marker
+    marker_set: 
+    call puts
+    add cl, 1
     jmp puts_cycle
 
-    end_puts_cycle: ret
+    end_puts_cycle: 
+  
+  mov ah, 0x00
+  int 0x16
 
+  cmp ah, 0x48
+  je key_up
+  cmp ah, 0x50
+  je key_down
+  cmp ah, 0x0D
+  je start_kernel
+  jmp menu_loop
+
+  key_up:
+    cmp byte [selected], 0
+    je menu_loop
+    dec byte [selected]
+    jmp menu_loop
+
+  key_down:
+    cmp byte [selected], 0
+    je menu_loop
+    inc byte [selected]
+    jmp menu_loop
+
+start_kernel:
+  mov al, [selected]
+  mov [0x8000], al
   cli
   lgdt [gdt_info]
   in al, 0x92
@@ -75,12 +108,16 @@ start:
 
 loading_str: db "Loading...", 0
 colors:    
-  db "gray", 0, 0, 0, 0
-  db "cyan", 0, 0, 0, 0
-  db "white", 0, 0, 0
-  db "green", 0, 0, 0
-  db "yellow", 0, 0
-  db "magenta", 0
+  db "1.Gray", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  db "2.Cyan", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+  db "3.White", 0, 0, 0, 0, 0, 0, 0, 0, 0
+  db "4.Green", 0, 0, 0, 0, 0, 0, 0, 0, 0
+  db "5.Yellow", 0, 0, 0, 0, 0, 0, 0, 0
+  db "6.Magenta", 0, 0, 0, 0, 0, 0, 0
+
+marker: db "<", 0
+no_marker: db "  ", 0
+selected: db 0
 
 puts:
   mov al, [si]
