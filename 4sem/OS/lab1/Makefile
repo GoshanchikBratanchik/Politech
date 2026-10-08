@@ -5,6 +5,7 @@ kernel.o: kernel.cpp
 
 kernel.bin: kernel.o kernel.ld
 	ld -m elf_i386 -T kernel.ld --oformat binary -o kernel.bin kernel.o
+	truncate -s 1440K kernel.bin
 
 bootsect.bin: bootsect.asm
 	yasm -f bin -o bootsect.bin bootsect.asm
@@ -13,10 +14,15 @@ run: target
 	qemu-system-i386 -drive file=bootsect.bin,format=raw,if=floppy,index=0 \
 	                 -drive file=kernel.bin,format=raw,if=floppy,index=1 -boot a
 
+debug: target
+	qemu-system-i386 -drive file=bootsect.bin,format=raw,if=floppy,index=0 \
+	                 -drive file=kernel.bin,format=raw,if=floppy,index=1 -boot a \
+									 -monitor stdio
+
 run-v2: target
 	qemu-system-i386 -fda bootsect.bin -fdb kernel.bin -boot a
 
 clean:
 	rm -f *.o *.bin
 
-.PHONY: target clean make run
+.PHONY: target debug clean make run

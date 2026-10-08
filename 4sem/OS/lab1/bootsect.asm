@@ -18,7 +18,7 @@ start:
   mov bx, 0
 
   mov ah, 0x02
-  mov al, 1
+  mov al, 18
   mov ch, 0
   mov cl, 1
   mov dh, 0
@@ -68,7 +68,7 @@ menu_loop:
     jmp puts_cycle
 
     end_puts_cycle: 
-  
+  mov cl, 0x00  
   mov ah, 0x00
   int 0x16
 
@@ -76,7 +76,7 @@ menu_loop:
   je key_up
   cmp ah, 0x50
   je key_down
-  cmp ah, 0x0D
+  cmp al, 0x0D
   je start_kernel
   jmp menu_loop
 
@@ -87,7 +87,7 @@ menu_loop:
     jmp menu_loop
 
   key_down:
-    cmp byte [selected], 0
+    cmp byte [selected], 5
     je menu_loop
     inc byte [selected]
     jmp menu_loop
@@ -115,7 +115,7 @@ colors:
   db "5.Yellow", 0, 0, 0, 0, 0, 0, 0, 0
   db "6.Magenta", 0, 0, 0, 0, 0, 0, 0
 
-marker: db "<", 0
+marker: db " <", 0
 no_marker: db "  ", 0
 selected: db 0
 
