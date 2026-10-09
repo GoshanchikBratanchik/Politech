@@ -1,13 +1,72 @@
 __asm("jmp kmain");
 
-#define VIDEO_BUF_PTR (0xb8000)
+#define VIDEO_BUF_PTR 0xb8000
 #define VIDEO_WIDTH 80
 #define VIDEO_HEIGHT 25
 #define CURSOR_PORT 0X3D4
+#define IDT_TYPE_INTR 0x0E
+#define IDT_TYPE_TRAP 0x0F
+#define GDT_CS 0x08
+#define PIC1_PORT 0x20
 
 unsigned int cur_row = 0;
 unsigned int cur_col = 0;
 unsigned char cur_color = 0x07;
+
+struct idt_entry {
+  unsigned short base_lo;
+  unsigned short base_hi;
+  unsigned short segm_sel;
+  unsigned char always0;
+  unsigned char flags;
+} __attribute__((packed));
+
+struct idt_ptr {
+  unsigned short limit;
+  unsigned int base;
+} __attribute__((packed));
+
+struct idt_entry g_idt[256];
+struct idt_ptr g_idtp;
+
+void default_intr_handler() {
+  asm("pusha");
+
+  asm("popa; leave; iret");
+}
+
+typedef void (*intr_handler)();
+void intr_reg_handler(int num, unsigned short segm_sel, unsigned short flags,
+                      intr_handler hndlr) {
+  unsigned int hndlr_addr = (unsigned int)hndlr;
+
+  g_idt[num].base_lo = (unsigned short)(hndlr_addr & 0xFFFF);
+  g_idt[num].segm_sel = segm_sel;
+  g_idt[num].always0 = 0;
+  g_idt[num].flags = flags;
+  g_idt[num].base_hi = (unsigned short)(hndlr_addr >> 16);
+}
+
+void intr_init() {
+  int idt_count = sizeof(g_idt) / sizeof(g_idt[0]);
+
+  for (int i = 0; i < idt_count; i++) {
+    intr_reg_handler(i, GDT_CS, 0x80 | IDT_TYPE_INTR, default_intr_handler());
+  }
+}
+
+void intr_start() {
+  int idt_count = sizeof(g_idt) / sizeof(g_idt[0]);
+
+  g_idtp.base = (unsigned int)(&g_idt[0]);
+  g_idtp.limit = (sizeof(struct idt_entry) * idt_count) - 1;
+
+  asm("lidt %0" : : "m"(g_idtp));
+}
+
+void intr_enable() { asm("sti"); }
+
+void intr_disable() { asm("cli"); }
 
 static inline unsigned char inb(unsigned short port) {
   unsigned char data;
@@ -17,6 +76,29 @@ static inline unsigned char inb(unsigned short port) {
 
 static inline void outb(unsigned short port, unsigned char data) {
   asm volatile("outb %b0, %w1" : : "a"(data), "Nd"(port));
+}
+
+void keyb_process_keys() {
+  if (inb(0x64) & 0x01) {
+    unsigned char scan_code;
+    unsigned char state;
+    scan_code = inb(0x60);
+
+    if (scan_code < 128)
+      on_key(scan_code);
+  }
+}
+
+void keyb_handler() {
+  asm("pusha");
+  keyb_process_keys();
+  outb(PIC1_PORT, 0x20);
+  asm("popa; leave; iret");
+}
+
+void keyb_init() {
+  intr_reg_handler(0x09, GDT_CS, 0x80 | IDT_TYPE_INTR, keyb_handler());
+  outb(PIC1_PORT + 1, 0xFF ^ 0x02);
 }
 
 void cursor_moveto(unsigned int strnum, unsigned int pos) {
