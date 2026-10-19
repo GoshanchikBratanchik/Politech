@@ -1,29 +1,15 @@
-"""
-Поиск всех неизоморфных подграфов заданного ориентированного графа
-(перечисление подграфов с точностью до изоморфизма).
-
-Формат входного файла:
-    1-я строка      — порядок графа n;
-    следующие n строк — матрица смежности n x n (числа через пробел).
-Для невзвешенного графа элементы матрицы — 0 или 1,
-для взвешенного — вес дуги (0 означает отсутствие дуги).
-Петли (ненулевая диагональ) и кратные дуги не допускаются.
-
-Требуются библиотеки: networkx, matplotlib
-    pip install networkx matplotlib
-"""
-
 import math
 import os
 import re
-import subprocess
 import sys
-from itertools import combinations, chain
+import webbrowser
+from itertools import chain, combinations
+from pathlib import Path
 
 try:
-    import networkx as nx
     import matplotlib
     import matplotlib.pyplot as plt
+    import networkx as nx
 except ImportError:
     print(
         "Не найдены библиотеки. Установите их командой:\n"
@@ -43,9 +29,9 @@ def setup_backend():
     for backend in ("TkAgg", "QtAgg", "Qt5Agg", "GTK4Agg", "GTK3Agg", "WXAgg"):
         try:
             plt.switch_backend(backend)
-            return True
-        except Exception:
-            continue
+        except (ImportError, RuntimeError, ValueError):
+            continue  # этот бэкенд не установлен — пробуем следующий
+        return True
     plt.switch_backend("Agg")
     return False
 
@@ -67,17 +53,12 @@ def show_figure(fig, name):
     path = os.path.join(IMAGE_DIR, f"{_image_counter:03d}_{safe}.png")
     fig.savefig(path, dpi=110)
     plt.close(fig)
-    print(f"  Рисунок сохранён: {os.path.abspath(path)}")
-    opener = {"linux": "xdg-open", "darwin": "open"}.get(sys.platform)
-    try:
-        if sys.platform.startswith("win"):
-            os.startfile(os.path.abspath(path))
-        elif opener:
-            subprocess.Popen(
-                [opener, path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-    except Exception:
-        pass
+    full_path = Path(path).resolve()
+    print(f"  Рисунок сохранён: {full_path}")
+    # открываем картинку программой по умолчанию; если не вышло —
+    # файл всё равно сохранён, его можно открыть вручную
+    if not webbrowser.open(full_path.as_uri()):
+        print("  (Не удалось открыть автоматически — откройте файл вручную.)")
 
 
 PER_PAGE_CLASSES = 12  # сколько подграфов-классов на одном окне
@@ -89,9 +70,7 @@ class GraphError(Exception):
     """Ошибка в содержимом файла с графом."""
 
 
-# ----------------------------------------------------------------------
-#  а) Загрузка и проверка графа
-# ----------------------------------------------------------------------
+# Загрузка и проверка графа
 
 
 def read_text(filename):
@@ -104,7 +83,7 @@ def read_text(filename):
     raise GraphError("Не удалось прочитать файл: неизвестная кодировка.")
 
 
-def load_graph(filename, weighted):
+def load_graph(filename: str, weighted: bool) -> list[list[float]]:
     """Читает файл и возвращает матрицу смежности. При ошибке — GraphError."""
     try:
         text = read_text(filename)
@@ -134,7 +113,7 @@ def load_graph(filename, weighted):
             f"а найдено {len(rows)}."
         )
 
-    matrix = []
+    matrix: list[list[float]] = []
     for i, row in enumerate(rows, start=1):
         tokens = re.split(r"[\s;,]+", row)
         if len(tokens) != n:
@@ -143,7 +122,7 @@ def load_graph(filename, weighted):
                 f"найдено {len(tokens)} (номера вершин выходят "
                 f"за пределы диапазона 1..{n})."
             )
-        values = []
+        values: list[float] = []
         for j, tok in enumerate(tokens, start=1):
             try:
                 x = float(tok)
@@ -187,22 +166,24 @@ def invariant(k, edges):
     return len(edges), mutual, tuple(sorted(zip(out_d, in_d)))
 
 
-def count_candidates(matrix, k, induced):
+def count_candidates(matrix, k):
+    """Сколько всего подграфов порядка k придётся проверить."""
     n = len(matrix)
     total = 0
     for combo in combinations(range(n), k):
+        # m дуг между выбранными вершинами дают 2^m подмножеств дуг
         m = sum(1 for u in combo for v in combo if u != v and matrix[u][v])
-        total += 1 if induced else 2**m
+        total += 2**m
     return total
 
 
-def find_classes(matrix, k, induced):
+def find_classes(matrix, k):
     """
     Возвращает список классов изоморфизма подграфов порядка k.
+    Подграф — любое подмножество из k вершин и любое подмножество дуг
+    исходного графа между ними (VH ⊆ VG, EH ⊆ EG).
     Класс: {'graph': DiGraph на 0..k-1, 'occ': [(вершины, дуги), ...], 'key': ...}
     Вершины и дуги в вхождениях — в нумерации исходного графа (с 1).
-    induced=True  — порождённые подграфы (берутся все дуги между выбранными вершинами);
-    induced=False — все подграфы (любое подмножество дуг между выбранными вершинами).
     """
     n = len(matrix)
     classes = []
@@ -210,12 +191,10 @@ def find_classes(matrix, k, induced):
     for combo in combinations(range(n), k):
         local = {v: i for i, v in enumerate(combo)}
         avail = [(u, v) for u in combo for v in combo if u != v and matrix[u][v]]
-        if induced:
-            edge_sets = [avail]
-        else:
-            edge_sets = chain.from_iterable(
-                combinations(avail, r) for r in range(len(avail) + 1)
-            )
+        # все подмножества доступных дуг: по 0 дуг, по 1, ..., все сразу
+        edge_sets = chain.from_iterable(
+            combinations(avail, r) for r in range(len(avail) + 1)
+        )
         for es in edge_sets:
             loc_edges = [(local[u], local[v]) for u, v in es]
             key = invariant(k, loc_edges)
@@ -239,11 +218,6 @@ def find_classes(matrix, k, induced):
     return classes
 
 
-# ----------------------------------------------------------------------
-#  Рисование
-# ----------------------------------------------------------------------
-
-
 def draw_graph(
     ax, nodes, edges, pos, weights=None, hl_nodes=None, hl_edges=None, title=None
 ):
@@ -256,7 +230,9 @@ def draw_graph(
     g.add_nodes_from(nodes)
     g.add_edges_from(edges)
     edge_set = set(edges)
-    highlight = hl_nodes is not None
+    highlight = hl_nodes is not None or hl_edges is not None
+    hl_nodes = hl_nodes or set()
+    hl_edges = hl_edges or set()
 
     if highlight:
         node_colors = ["#e74c3c" if v in hl_nodes else "#e0e0e0" for v in nodes]
@@ -314,7 +290,12 @@ def draw_graph(
                 color="#1a5276",
                 ha="center",
                 va="center",
-                bbox=dict(boxstyle="round,pad=0.15", fc="white", ec="none", alpha=0.85),
+                bbox={
+                    "boxstyle": "round,pad=0.15",
+                    "fc": "white",
+                    "ec": "none",
+                    "alpha": 0.85,
+                },
             )
 
     if title:
@@ -331,11 +312,14 @@ def draw_graph(
     ax.axis("off")
 
 
-def graph_layout(n):
-    nodes = list(range(1, n + 1))
+def graph_layout(n: int) -> dict[int, tuple[float, float]]:
+    """Расставляет вершины 1..n равномерно по окружности радиуса 1."""
     if n == 1:
         return {1: (0.0, 0.0)}
-    return nx.circular_layout(nodes)
+    return {
+        v: (math.cos(2 * math.pi * (v - 1) / n), math.sin(2 * math.pi * (v - 1) / n))
+        for v in range(1, n + 1)
+    }
 
 
 def paged_show(items, per_page, draw_item, window_title):
@@ -363,18 +347,12 @@ def paged_show(items, per_page, draw_item, window_title):
         show_figure(fig, f"{window_title}_{p + 1}")
 
 
-# ----------------------------------------------------------------------
-#  б) г) Функции меню
-# ----------------------------------------------------------------------
-
-
 class App:
     def __init__(self):
-        self.matrix = None
+        self.matrix: list[list[float]] = []  # пустая — граф не загружен
         self.weighted = False
-        self.filename = None
+        self.filename = ""
         self.classes = {}  # k -> список классов
-        self.induced = {}  # k -> тип подграфов, для которого считали
 
     # --- вспомогательное ---
     @property
@@ -400,7 +378,7 @@ class App:
         }
 
     def need_graph(self):
-        if self.matrix is None:
+        if not self.matrix:
             print("Сначала загрузите граф (пункт 1).")
             return False
         return True
@@ -418,7 +396,6 @@ class App:
             return
         self.matrix, self.weighted, self.filename = matrix, weighted, filename
         self.classes.clear()
-        self.induced.clear()
         print(
             f"Граф загружен: {self.n} вершин, {len(self.edges())} дуг"
             f"{', взвешенный' if weighted else ''}."
@@ -447,17 +424,7 @@ class App:
         k = ask_int(f"Введите порядок подграфов k (1..{self.n}): ", 1, self.n)
         if k is None:
             return
-        print(
-            "Какие подграфы искать?\n"
-            "  1 — порождённые (все дуги исходного графа между выбранными вершинами)\n"
-            "  2 — все подграфы (любое подмножество этих дуг)"
-        )
-        mode = ask_int("Ваш выбор [1]: ", 1, 2, default=1)
-        if mode is None:
-            return
-        induced = mode == 1
-
-        total = count_candidates(self.matrix, k, induced)
+        total = count_candidates(self.matrix, k)
         if total > 200_000:
             ans = (
                 input(
@@ -470,12 +437,10 @@ class App:
             if ans not in ("д", "да", "y", "yes"):
                 return
         print("Идёт поиск...")
-        classes = find_classes(self.matrix, k, induced)
+        classes = find_classes(self.matrix, k)
         self.classes[k] = classes
-        self.induced[k] = induced
 
-        kind = "порождённых" if induced else "всех"
-        print(f"\nНайдено неизоморфных {kind} подграфов порядка {k}: {len(classes)}")
+        print(f"\nНайдено неизоморфных подграфов порядка {k}: {len(classes)}")
         for j, c in enumerate(classes, start=1):
             arcs = ", ".join(f"{u + 1}→{v + 1}" for u, v in sorted(c["graph"].edges()))
             print(
@@ -498,12 +463,8 @@ class App:
                 title=f"({k},{j})   вхождений: {len(c['occ'])}",
             )
 
-        title_kind = "порождённые" if induced else "все"
         paged_show(
-            items,
-            PER_PAGE_CLASSES,
-            draw_item,
-            f"Неизоморфные подграфы порядка {k} ({title_kind})",
+            items, PER_PAGE_CLASSES, draw_item, f"Неизоморфные подграфы порядка {k}"
         )
 
     # --- г) ---
@@ -603,8 +564,8 @@ def main():
         "4": app.show_occurrences,
     }
     while True:
-        print("\n========== Неизоморфные подграфы орграфа ==========")
-        if app.matrix is not None:
+        print("\n========== Неизоморфные подграфы орграфа (все подграфы) ==========")
+        if app.matrix:
             print(f"Текущий граф: {app.filename} ({app.n} вершин)")
         print(
             "1 — загрузить граф из файла\n"
